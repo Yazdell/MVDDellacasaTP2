@@ -3,9 +3,11 @@
 
 library(tidyverse)
 library(tidytext)
+library(here)
 
 #------------------------ 1. CARGA DE DATOS-------------------------------------
-input_path <- "TP2/output/processed_text.rds"
+input_path <- here("TP2", "output", "processed_text.rds")
+output_dir <- here("TP2", "output")
 message("Cargando datos procesados desde: ", input_path)
 tabla_final <- read_rds(input_path)
 

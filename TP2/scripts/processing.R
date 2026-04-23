@@ -5,10 +5,11 @@ library(tidyverse)
 library(udpipe)
 ##install.packages("stopwords")
 library(stopwords)
+library(here)
 
 # ---------------------1. CARGA DE DATOS Y DIRECTORIOS.-----------------------------
-input_path <- "TP2/data/tabla_oea.rds"
-output_dir <- "TP2/output"
+input_path <- here("TP2", "data", "tabla_oea.rds")
+output_dir <- here("TP2", "output")
 
 if (!dir.exists(output_dir)) {
   message("Creando el directorio: ", output_dir)

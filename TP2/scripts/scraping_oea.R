@@ -4,8 +4,9 @@
 library(tidyverse)
 library(rvest)
 library(tidyr)
+library(here)
 
-data_dir <- "TP2/data"
+data_dir <- here("TP2", "data")
 
 if (!dir.exists(data_dir)) {
   message("Creando el directorio: ", data_dir)
