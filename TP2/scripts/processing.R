@@ -30,8 +30,16 @@ tabla_limpia <- tabla_oea |>
 
 # ---------------------------------3. LEMATIZACIÓN ---------------------------------------------
 message("Iniciando lematización con udpipe...")
-# cargo el modelo de udpipe 
-m_es <- udpipe_download_model(language = "spanish", overwrite = FALSE)
+library(here) 
+
+# Le decimos que descargue/busque el modelo en TP2/data xq sino me duplica las carpetas
+m_es <- udpipe_download_model(
+  language = "spanish", 
+  overwrite = FALSE, 
+  destdir = here("TP2", "data") # <-- Esto es lo que arregla el lío de carpetas
+)
+
+# Cargamos el modelo desde esa ruta específica
 modelo_es <- udpipe_load_model(m_es$file_model)
 
 # ahora lematizo el tetxo completo 
