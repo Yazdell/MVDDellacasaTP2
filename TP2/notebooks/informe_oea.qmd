@@ -69,6 +69,12 @@ Por último, armé una matriz (DTM) para contar cuántas veces aparecían alguna
 ![Frecuencia de términos clave en la OEA](../output/frecuencia_terminos.png){width=100%}
 :::
 
+## ¿Por qué elegí estas palabras?
+
+Para armar el gráfico  elegí cinco que me parece que centrales de lo que hace la OEA. 
+
+Elegí **"democracia"** y **"derecho"** porque son básicamente los valores que siempre pregonan en sus discursos y tratados. Después sumé **"misión"** y **"elección"** porque quería ver si los comunicados reflejaban esa parte más "operativa" de la organización, que es la de ir a observar elecciones a los países miembros. Por último puse **"seguridad"**, que es el otro gran pilar de su agenda regional. Me pareció que con este combo de palabras podía captar bien por dónde viene la mano este año y si realmente se habla de lo que dicen sus estatutos.
+
 Mirando el gráfico, me di cuenta de que la palabra "misión" y "derecho" aparecen un montón. Esto tiene sentido porque la OEA se la pasa mandando misiones de observación electoral y hablando de derechos humanos. Lo que me llamó la atención es que "democracia" está ahí arriba pero no es la número uno; parece que la organización es más "operativa" (misiones) que teórica.
 
 En conclusión, el proceso me sirvió para automatizar algo que a mano me hubiera llevado días, y ahora puedo ver clarito de qué trata la agenda de la OEA este año.
