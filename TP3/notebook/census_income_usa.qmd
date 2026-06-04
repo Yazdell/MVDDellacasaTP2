@@ -76,7 +76,7 @@ df_clean <- adult_data |>
 
 # 1. Análisis Exploratorio y Decisiones
 
-La variable monetaria `capital_gain` veo que es medio asimetrica (la mayoría de las personas no tienen ganancias extra). Por eso, hago una una transformación logarítmica. También, incluyo una interacción entre `hours_per_week` y `sex` para evaluar la brecha salarial por horas trabajadas.
+La variable monetaria `capital_gain` veo que es medio asimetrica (la mayoría de las personas no tienen ganancias extra). Por eso, hago una una transformación logarítmica. También, incluí una interacción entre `hours_per_week` y `sex` para ver la brecha salarial por horas trabajadas.
 
 ```{r}
 #| label: eda
@@ -91,7 +91,7 @@ ggplot(df_clean, aes(x = income, y = log1p(capital_gain), fill = income)) +
 
 ## 2. Ajuste de Modelos (Regresión Logística)
 
-Ajustaremos dos modelos utilizando `glm()` con la familia binomial (enlace logit). El primero será nuestro modelo base y el segundo incluirá el término de interacción justificado en el análisis exploratorio.
+Ahora ajuto dos modelos utilizando `glm()` con la familia binomial. El primero va a ser el modelo base y el segundo voy a agregar el término de interacción.
 
 ```{r}
 #| label: modelos
@@ -114,7 +114,7 @@ A continuación, extraemos los Efectos Marginales Promedio (AME) del Modelo 2 ut
 ```{r}
 #| label: marginal-effects
 
-# Calculamos los AME
+# Calcula los AME
 efectos_marginales <- avg_comparisons(modelo_2)
 
 # Presentación estandarizada en tabla HTML
@@ -128,15 +128,15 @@ efectos_marginales |>
 
 Todos los predictores que inclui en el modelo resultaron ser estadísticamente significativos (p-valor \< 0.05). Cuando analizo los estimadores de los efectos marginales (AME), puedo ver cómo impacta cada variable en la probabilidad de percibir ingresos mayores a \$50,000 anuales, manteniendo el resto de las vars constantes:
 
--   Estado Civil: Es la variable con mayor impacto aislado. Estar casado (frente a estar soltero u en otra situación) incrementa la probabilidad de superar el umbral de ingresos en 19.89 puntos porcentuales.
+-   ***Estado Civil:*** Es la variable con mayor impacto aislado. Estar casado (frente a estar soltero u en otra situación) incrementa la probabilidad de superar el umbral de ingresos en 19.89 puntos porcentuales.
 
--   Brecha de Género (Sexo): En promedio, el hecho de ser hombre (frente a ser mujer) aumenta la probabilidad de pertenecer al estrato de altos ingresos en un 9.13%.
+-   ***Brecha de Género (Sexo):*** En promedio, el hecho de ser hombre (frente a ser mujer) aumenta la probabilidad de pertenecer al estrato de altos ingresos en un 9.13%.
 
--   Educación: El capital humano tiene un retorno positivo claro; cada año adicional de educación formal aumenta las chances de percibir altos ingresos en 3.85 puntos porcentuales.
+-   ***Educación:*** El capital humano tiene un retorno positivo claro; cada año adicional de educación formal aumenta las chances de percibir altos ingresos en 3.85 puntos porcentuales.
 
--   Edad y Horas de Trabajo: El efecto marginal de un año extra de edad suma 0.76 puntos porcentuales. Por su parte, cada hora extra de trabajo semanal incrementa la probabilidad en 0.39 puntos porcentuales (este es el efecto promedio, considerando que la variable está interactuando con el género en el modelo).
+-   ***Edad y Horas de Trabajo:*** El efecto marginal de un año extra de edad suma 0.76 puntos porcentuales. Por su parte, cada hora extra de trabajo semanal incrementa la probabilidad en 0.39 puntos porcentuales (este es el efecto promedio, considerando que la variable está interactuando con el género en el modelo).
 
--   Ganancias de Capital: Al estar en escala logarítmica, un aumento unitario en el logaritmo de esta variable incrementa la probabilidad en 4.60 puntos porcentuales.
+-   ***Ganancias de Capital:*** Al estar en escala logarítmica, un aumento unitario en el logaritmo de esta variable incrementa la probabilidad en 4.60 puntos porcentuales.
 
 Ahora, vemos los Odds Ratios con un Forest Plot:
 
@@ -176,7 +176,7 @@ ggplot(or_df, aes(y = reorder(term, estimate), x = estimate)) +
 
 ## 4. Comparación Global de Modelos
 
-Comparamos el desempeño del modelo base frente al interactivo utilizando la función `glance()` del paquete `broom`.
+Ahora comparo el desempeño del modelo base frente al interactivo utilizando la función `glance()` del paquete.
 
 ```{r}
 #| label: comparacion
@@ -203,10 +203,14 @@ La Deviance bajó pero muy poco: La deviance seria el error del modelo (lo que n
 
 El Pseudo-R² : En ambos modelos es de 0.236 (explican más o menos un 23.6% del fenómeno).. En logit entre 0.20 y 0.40 se considera un modelo muy sólido, osea que no cambio tanto con la interacción
 
-¿El término de interacción mejora el modelo? 
-No, la inclusión de la interacción no mejora el modelo. Osea que cruzar las horas de trabajo con el sexo del individuo no aporta poder explicativo extra para predecir si alguien gana más de $50,000.
-Entonces, nos podriamos quedar con el modelo 1
+¿El término de interacción mejora el modelo? No, la inclusión de la interacción no mejora el modelo. Osea que cruzar las horas de trabajo con el sexo del individuo no aporta poder explicativo extra para predecir si alguien gana más de \$50,000. Entonces, nos podriamos quedar con el modelo 1
 
 ## 5. Conclusiones Finales
 
-PONER CONCLUSION
+El objetivo de este trabajo era analizar qué factores sociodemográficos y laborales influyen en la probabilidad de que un ciudadano tenga ingresos altos (superiores a los u\$s 50,000 anuales). Tras analizar y modelar los datos del censo, podemos llegar a las siguientes conclusiones principales:
+
+1.  ***Los factores clave del éxito económico:*** A nivel individual, todas las variables analizadas resultaron importantes. Estar casado es el factor con mayor peso para aumentar la probabilidad de tener ingresos altos, seguido por el hecho de ser hombre (lo que expone una clara brecha de género en el mercado laboral). Además, confirmamos que tanto la educación formal como la experiencia (medida en años de edad) y las ganancias de capital se traducen en retornos económicos positivos.
+
+2.  ***La simplicidad le gana a la complejidad:*** Al evaluar el Modelo 1 (Base) frente al Modelo 2 (Interactivo), los datos nos demostraron que incluir una interacción entre las horas trabajadas por semana y el sexo no aportó un valor real al modelo. El error casi no bajó y el AIC subió, lo que nos indica que el modelo interactivo está innecesariamente sobrecargado. Por lo tanto, el modelo base es la mejor opción por ser más simple y eficiente.
+
+3.  ***Reflexión final:*** En definitiva, el perfil sociodemográfico de una persona (su nivel educativo, su estado civil y su género) tiene una influencia enorme en sus oportunidades económicas dentro de este mercado laboral formal. Este tipo de modelado estadístico nos permite ver con claridad cómo las desigualdades y los factores estructurales moldean los ingresos de la población de una manera totalmente medible.
