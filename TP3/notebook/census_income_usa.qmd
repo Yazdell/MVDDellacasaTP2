@@ -41,24 +41,28 @@ format:
 #| message: false
 #| warning: false
 
-# Cargamos exactamente las mismas librerías que en la clase
+#install.packages("here")
+
+#Cargo las librerias que voy a usar 
 library(tidyverse)
 library(broom)            # Para tidy() y glance()
 library(modelsummary)     # Para tablas
-library(kableExtra)       # Para estilo de tablas (kable_styling)
+library(kableExtra)      # Para estilo de tablas (kable_styling)
 library(marginaleffects)  # Para avg_comparisons()
 library(yardstick)        # Para métricas y evaluación
 
-# Cargamos la base de datos desde la carpeta /data
-adult_data <- read_csv("data/adult_census_USA.csv")
+# Cargo la base de datos desde la carpeta /data
+library(here)
 
-# Limpieza y preparación (asegurando el nivel de referencia)
+adult_data <- read_csv(here("TP3", "data", "adult_census_USA.csv"))
+
+# Limpieza y preparación
 df_clean <- adult_data |>
   mutate(
-    # income: <=50K es la base, >50K es el 1 (lo que queremos predecir)
+    # income: <=50K es la base, >50K es el 1 (lo que quiero predecir)
     income = factor(income, levels = c("<=50K", ">50K")),
     
-    # Simplificamos estado civil a 2 categorías para el análisis
+    # Simplifico el estado civil a 2 categorías
     marital_status = case_when(
       marital_status %in% c("Married-civ-spouse", "Married-spouse-absent", "Married-AF-spouse") ~ "Married",
       TRUE ~ "Single/Other"
@@ -72,7 +76,7 @@ df_clean <- adult_data |>
 
 # 1. Análisis Exploratorio y Decisiones
 
-La variable monetaria `capital_gain` presenta una enorme asimetría (la mayoría de las personas no tienen ganancias extra). Al igual que se vio en clase, aplicaremos una transformación logarítmica. A su vez, incluiremos una interacción entre `hours_per_week` y `sex` para evaluar la brecha salarial por horas trabajadas.
+La variable monetaria `capital_gain` veo que es medio asimetrica (la mayoría de las personas no tienen ganancias extra). Por eso, hago una una transformación logarítmica. También, incluyo una interacción entre `hours_per_week` y `sex` para evaluar la brecha salarial por horas trabajadas.
 
 ```{r}
 #| label: eda
@@ -120,16 +124,28 @@ efectos_marginales |>
   kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
 ```
 
-PONER ACA INTERPRETACION !!!!
+**Interpretación de Efectos Marginales Promedio (AME):**
 
-A continuación, visualizamos los Odds Ratios mediante un Forest Plot:
+Todos los predictores que inclui en el modelo resultaron ser estadísticamente significativos (p-valor \< 0.05). Cuando analizo los estimadores de los efectos marginales (AME), puedo ver cómo impacta cada variable en la probabilidad de percibir ingresos mayores a \$50,000 anuales, manteniendo el resto de las vars constantes:
+
+-   Estado Civil: Es la variable con mayor impacto aislado. Estar casado (frente a estar soltero u en otra situación) incrementa la probabilidad de superar el umbral de ingresos en 19.89 puntos porcentuales.
+
+-   Brecha de Género (Sexo): En promedio, el hecho de ser hombre (frente a ser mujer) aumenta la probabilidad de pertenecer al estrato de altos ingresos en un 9.13%.
+
+-   Educación: El capital humano tiene un retorno positivo claro; cada año adicional de educación formal aumenta las chances de percibir altos ingresos en 3.85 puntos porcentuales.
+
+-   Edad y Horas de Trabajo: El efecto marginal de un año extra de edad suma 0.76 puntos porcentuales. Por su parte, cada hora extra de trabajo semanal incrementa la probabilidad en 0.39 puntos porcentuales (este es el efecto promedio, considerando que la variable está interactuando con el género en el modelo).
+
+-   Ganancias de Capital: Al estar en escala logarítmica, un aumento unitario en el logaritmo de esta variable incrementa la probabilidad en 4.60 puntos porcentuales.
+
+Ahora, vemos los Odds Ratios con un Forest Plot:
 
 ```{r}
 #| label: forest-plot
 #| fig-width: 8
 #| fig-height: 6
 
-# Extraemos coeficientes de log-odds y calculamos los intervalos manualmente
+# Aca lo que hago es extraerlos coeficientes de log-odds y calculo manualmente los intervalos 
 or_df <- broom::tidy(modelo_2, conf.int = FALSE) |> 
   mutate(
     # Z-scores para 99% (2.576), 95% (1.96) y 80% (1.28)
@@ -139,7 +155,7 @@ or_df <- broom::tidy(modelo_2, conf.int = FALSE) |>
     hi_95 = exp(estimate + 1.96 * std.error),
     lo_80 = exp(estimate - 1.28 * std.error),
     hi_80 = exp(estimate + 1.28 * std.error),
-    estimate = exp(estimate) # Transformamos a Odds Ratios
+    estimate = exp(estimate) # Transformo a Odds Ratios
   ) |>
   filter(term != "(Intercept)")
 
@@ -176,6 +192,20 @@ bind_rows(glance_m1, glance_m2) |>
   kable(digits = 3, caption = "Comparación de Modelos Logísticos") |>
   kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
 ```
+
+**Interpretación:**
+
+Acá lo que hago es ver si valió la pena armar el Modelo 2 (osea agregar la interacción) o si era mejor con el Modelo 1 (base)
+
+El AIC bajó: Como en el Modelo 2 el AIC subió (pasó de 27509.30 a 27511.02), nos está diciendo que la complejidad extra que le sumamos (la interacción) no aporta lo suficiente como para justificarse.
+
+La Deviance bajó pero muy poco: La deviance seria el error del modelo (lo que no puede explicar). bajó de 27495.30 a 27495.02
+
+El Pseudo-R² : En ambos modelos es de 0.236 (explican más o menos un 23.6% del fenómeno).. En logit entre 0.20 y 0.40 se considera un modelo muy sólido, osea que no cambio tanto con la interacción
+
+¿El término de interacción mejora el modelo? 
+No, la inclusión de la interacción no mejora el modelo. Osea que cruzar las horas de trabajo con el sexo del individuo no aporta poder explicativo extra para predecir si alguien gana más de $50,000.
+Entonces, nos podriamos quedar con el modelo 1
 
 ## 5. Conclusiones Finales
 
