@@ -148,14 +148,15 @@ Ahora, vemos los Odds Ratios con un Forest Plot:
 # Aca lo que hago es extraerlos coeficientes de log-odds y calculo manualmente los intervalos 
 or_df <- broom::tidy(modelo_2, conf.int = FALSE) |> 
   mutate(
-    # Z-scores para 99% (2.576), 95% (1.96) y 80% (1.28)
     lo_99 = exp(estimate - 2.576 * std.error),
     hi_99 = exp(estimate + 2.576 * std.error),
     lo_95 = exp(estimate - 1.96 * std.error),
     hi_95 = exp(estimate + 1.96 * std.error),
     lo_80 = exp(estimate - 1.28 * std.error),
     hi_80 = exp(estimate + 1.28 * std.error),
-    estimate = exp(estimate) # Transformo a Odds Ratios
+    estimate = exp(estimate), # Transformamos a Odds Ratios
+    # 1. CREAMOS LA VARIABLE DE SIGNIFICANCIA mirando el p.value
+    Significancia = ifelse(p.value < 0.05, "Sig.(p<0.05)", "No Sig.")
   ) |>
   filter(term != "(Intercept)")
 
@@ -165,7 +166,13 @@ ggplot(or_df, aes(y = reorder(term, estimate), x = estimate)) +
   geom_linerange(aes(xmin = lo_99, xmax = hi_99), color = "#74ADD1", linewidth = 1.5) +
   geom_linerange(aes(xmin = lo_95, xmax = hi_95), color = "#4575B4", linewidth = 3.5) +
   geom_linerange(aes(xmin = lo_80, xmax = hi_80), color = "#313695", linewidth = 6) +
-  geom_point(color = "#D73027", size = 4) +
+  # 2. PONEMOS EL COLOR ADENTRO DEL aes()
+  geom_point(aes(color = Significancia), size = 4) +
+  scale_color_manual(
+    # Rojo si es significativo, gris si no lo es
+    values = c("Sig.(p<0.05)" = "#D73027", "No Sig." = "gray60"), 
+    name = "Significancia"
+  ) +
   scale_x_log10() + 
   theme_minimal(base_size = 14) +
   labs(title = "Forest Plot de Odds Ratios", 
