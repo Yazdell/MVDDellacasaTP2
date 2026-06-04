@@ -1,0 +1,182 @@
+---
+title: "Trabajo Práctico Individual Nº 3: Regresión Logística"
+author: "Yazmin Dellacasa"
+date: "`r Sys.Date()`"
+lang: es
+execute:
+  echo: true
+  output: true
+  eval: true
+  cache: true
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-title: "Contenidos"
+    embed-resources: true
+    theme: cosmo
+    code-fold: false
+    code-tools: true
+    df-print: paged
+    include-in-header:
+      text: |
+        <style>
+        body {
+          text-align: justify;
+          font-size: 16px;
+          line-height: 1.6;
+        }
+        h1, h2, h3 {
+          color: #2C3E50;
+        }
+        .callout {
+          margin-top: 1.5em;
+          margin-bottom: 1.5em;
+        }
+        </style>
+---
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+# Cargamos exactamente las mismas librerías que en la clase
+library(tidyverse)
+library(broom)            # Para tidy() y glance()
+library(modelsummary)     # Para tablas
+library(kableExtra)       # Para estilo de tablas (kable_styling)
+library(marginaleffects)  # Para avg_comparisons()
+library(yardstick)        # Para métricas y evaluación
+
+# Cargamos la base de datos desde la carpeta /data
+adult_data <- read_csv("data/adult_census_USA.csv")
+
+# Limpieza y preparación (asegurando el nivel de referencia)
+df_clean <- adult_data |>
+  mutate(
+    # income: <=50K es la base, >50K es el 1 (lo que queremos predecir)
+    income = factor(income, levels = c("<=50K", ">50K")),
+    
+    # Simplificamos estado civil a 2 categorías para el análisis
+    marital_status = case_when(
+      marital_status %in% c("Married-civ-spouse", "Married-spouse-absent", "Married-AF-spouse") ~ "Married",
+      TRUE ~ "Single/Other"
+    ),
+    marital_status = factor(marital_status, levels = c("Single/Other", "Married")),
+    
+    # Sexo como factor explícito
+    sex = factor(sex, levels = c("Female", "Male"))
+  )
+```
+
+# 1. Análisis Exploratorio y Decisiones
+
+La variable monetaria `capital_gain` presenta una enorme asimetría (la mayoría de las personas no tienen ganancias extra). Al igual que se vio en clase, aplicaremos una transformación logarítmica. A su vez, incluiremos una interacción entre `hours_per_week` y `sex` para evaluar la brecha salarial por horas trabajadas.
+
+```{r}
+#| label: eda
+
+ggplot(df_clean, aes(x = income, y = log1p(capital_gain), fill = income)) +
+  geom_boxplot(alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Logaritmo de Ganancias de Capital según Ingreso", 
+       x = "Ingreso", y = "Log(Capital Gain + 1)") +
+  theme(legend.position = "none")
+```
+
+## 2. Ajuste de Modelos (Regresión Logística)
+
+Ajustaremos dos modelos utilizando `glm()` con la familia binomial (enlace logit). El primero será nuestro modelo base y el segundo incluirá el término de interacción justificado en el análisis exploratorio.
+
+```{r}
+#| label: modelos
+
+# Modelo 1 (Base): sin interacciones
+modelo_1 <- glm(income ~ age + education_num + hours_per_week + sex + marital_status + log1p(capital_gain), 
+                data = df_clean, 
+                family = binomial(link = "logit"))
+
+# Modelo 2 (Interactivo): incluye hours_per_week interactuando con sex
+modelo_2 <- glm(income ~ age + education_num + hours_per_week * sex + marital_status + log1p(capital_gain), 
+                data = df_clean, 
+                family = binomial(link = "logit"))
+```
+
+## 3. Interpretación de Resultados y Efectos Marginales
+
+A continuación, extraemos los Efectos Marginales Promedio (AME) del Modelo 2 utilizando `avg_comparisons()`.
+
+```{r}
+#| label: marginal-effects
+
+# Calculamos los AME
+efectos_marginales <- avg_comparisons(modelo_2)
+
+# Presentación estandarizada en tabla HTML
+efectos_marginales |>
+  select(term, contrast, estimate, conf.low, conf.high, p.value) |>
+  kable(digits = 4, caption = "Efectos Marginales Promedio (AME) - Modelo Interactivo") |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+PONER ACA INTERPRETACION !!!!
+
+A continuación, visualizamos los Odds Ratios mediante un Forest Plot:
+
+```{r}
+#| label: forest-plot
+#| fig-width: 8
+#| fig-height: 6
+
+# Extraemos coeficientes de log-odds y calculamos los intervalos manualmente
+or_df <- broom::tidy(modelo_2, conf.int = FALSE) |> 
+  mutate(
+    # Z-scores para 99% (2.576), 95% (1.96) y 80% (1.28)
+    lo_99 = exp(estimate - 2.576 * std.error),
+    hi_99 = exp(estimate + 2.576 * std.error),
+    lo_95 = exp(estimate - 1.96 * std.error),
+    hi_95 = exp(estimate + 1.96 * std.error),
+    lo_80 = exp(estimate - 1.28 * std.error),
+    hi_80 = exp(estimate + 1.28 * std.error),
+    estimate = exp(estimate) # Transformamos a Odds Ratios
+  ) |>
+  filter(term != "(Intercept)")
+
+# Gráfico
+ggplot(or_df, aes(y = reorder(term, estimate), x = estimate)) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "gray40", linewidth = 1) +
+  geom_linerange(aes(xmin = lo_99, xmax = hi_99), color = "#74ADD1", linewidth = 1.5) +
+  geom_linerange(aes(xmin = lo_95, xmax = hi_95), color = "#4575B4", linewidth = 3.5) +
+  geom_linerange(aes(xmin = lo_80, xmax = hi_80), color = "#313695", linewidth = 6) +
+  geom_point(color = "#D73027", size = 4) +
+  scale_x_log10() + 
+  theme_minimal(base_size = 14) +
+  labs(title = "Forest Plot de Odds Ratios", 
+       subtitle = "Intervalos de confianza al 80%, 95% y 99%",
+       x = "Odds Ratio (Escala Logarítmica)", 
+       y = "Variables")
+```
+
+## 4. Comparación Global de Modelos
+
+Comparamos el desempeño del modelo base frente al interactivo utilizando la función `glance()` del paquete `broom`.
+
+```{r}
+#| label: comparacion
+
+# Tabla comparativa calculando el Pseudo-R2
+glance_m1 <- broom::glance(modelo_1) |> 
+  mutate(Modelo = "1. Base", Pseudo_R2 = 1 - (deviance / null.deviance))
+glance_m2 <- broom::glance(modelo_2) |> 
+  mutate(Modelo = "2. Interactivo", Pseudo_R2 = 1 - (deviance / null.deviance))
+
+bind_rows(glance_m1, glance_m2) |>
+  select(Modelo, AIC, deviance, null.deviance, Pseudo_R2) |>
+  kable(digits = 3, caption = "Comparación de Modelos Logísticos") |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 5. Conclusiones Finales
+
+PONER CONCLUSION
